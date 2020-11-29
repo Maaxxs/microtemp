@@ -1,48 +1,12 @@
-/*
-  LiquidCrystal Library - Hello World
+/* Bits and pieces from https://www.circuitbasics.com/arduino-thermistor-temperature-sensor-tutorial/
+ * 
+ * 
+ */
 
- Demonstrates the use a 16x2 LCD display.  The LiquidCrystal
- library works with all LCD displays that are compatible with the
- Hitachi HD44780 driver. There are many of them out there, and you
- can usually tell them by the 16-pin interface.
-
- This sketch prints "Hello World!" to the LCD
- and shows the time.
-
-  The circuit:
- * LCD RS pin to digital pin 12
- * LCD Enable pin to digital pin 11
- * LCD D4 pin to digital pin 5
- * LCD D5 pin to digital pin 4
- * LCD D6 pin to digital pin 3
- * LCD D7 pin to digital pin 2
- * LCD R/W pin to ground
- * LCD VSS pin to ground
- * LCD VCC pin to 5V
- * 10K resistor:
- * ends to +5V and ground
- * wiper to LCD VO pin (pin 3)
-
- Library originally added 18 Apr 2008
- by David A. Mellis
- library modified 5 Jul 2009
- by Limor Fried (http://www.ladyada.net)
- example added 9 Jul 2009
- by Tom Igoe
- modified 22 Nov 2010
- by Tom Igoe
- modified 7 Nov 2016
- by Arturo Guadalupi
-
- This example code is in the public domain.
-
- http://www.arduino.cc/en/Tutorial/LiquidCrystalHelloWorld
-
-*/
-
-// Controlling LCD screen
+// LCD screen
 #include <LiquidCrystal.h>
 
+// I use a DHT11. Can read temperature and humidity
 // Set temperature PIN, type DHT11
 #include "DHT.h"
 #define DHTPIN 6
@@ -66,9 +30,7 @@ const int thermistor = 0;
 const float R1 = 10000;
 // Some coefficients from the Steinhart-Hart equation
 const float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07;
-float logR2, R2, temperature;
-float v_out;
-
+const float KELVIN_MIN = 273.15;
 
 // Create display
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
@@ -90,31 +52,40 @@ void setup() {
 // count failed reads
 int failed = 0;
 
+// needed for calculation
+float logR2, R2, temperature;
+// Read from analog PIN of thermistor
+float v_out;
+
 void loop() {
-  // https://www.circuitbasics.com/arduino-thermistor-temperature-sensor-tutorial/
-  v_out = analogRead(thermistor);
-  Serial.println(v_out);
-  
-  float v_in = v_out * 5 / 1024;
-  Serial.println(v_in);
-  
-  R2 = R1 * (1023.0 / (float)v_out - 1.0);
-  
-  logR2 = log(R2);
-  temperature = (1.0 / (c1 + c2 * logR2 + c3 * logR2 * logR2 * logR2));
-  temperature = temperature - 273.15;
+  // Reading and calculating the temperature from thermistor
+  // analogRead() returns a value from 0 to including 1023 which represents
+  // the voltage. Therefore, 1023 is the maximum = input voltage
+  float v_out= analogRead(thermistor);
+  if (isnan(v_out)) {
+    temperature = -999;
+  } else {
+    R2 = R1 * (1023 / v_out - 1.0);
 
-  Serial.print("Thermistor temp: ");
-  Serial.print(temperature);
-  Serial.println("°C");
+    // See the Steinhart-Hart equation for more info
+    logR2 = log(R2);
+    temperature = (1.0 / (c1 + c2 * logR2 + c3 * logR2 * logR2 * logR2));
+    temperature = temperature - KELVIN_MIN;
+  }
+
+  //  Serial.print("Thermistor temp: ");
+  //  Serial.print(temperature);
+  //  Serial.println("°C");
 
 
-   
-  float humi  = dht.readHumidity();
-  float tempC = dht.readTemperature();
+  // Reading the termpature from DHT11
+  float humidity  = dht.readHumidity();
+  float temp_c = dht.readTemperature();
 
-  if (isnan(humi) || isnan(tempC)) {
+  if (isnan(humidity) || isnan(temp_c)) {
     failed++;
+    humidity = -999;
+    temp_c = -999;
     if (failed > 5) {
       lcd.clear();
       lcd.setCursor(0, 0);
@@ -123,27 +94,29 @@ void loop() {
       lcd.print("values ");
       lcd.print(failed);
       lcd.print(" times.");
-    }
-    delay(2000);
-    return;
+    } 
   }
   // reset failed counter as read was successful
   failed = 0;
 
-//  Serial.println(tempC);
-//  Serial.println(humi);
+//  Serial.println(temp_c);
+//  Serial.println(humidity);
 
   
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Temp: ");
-  lcd.print(tempC);
+  lcd.print("T: ");
+  lcd.print(temp_c);
+//  lcd.print((char)223);
+  lcd.print("|");
+
+  lcd.print(temperature);
   lcd.print((char)223);
   lcd.print("C");
 
   lcd.setCursor(0, 1);
-  lcd.print("Hum : ");
-  lcd.print(humi);
+  lcd.print("Hum: ");
+  lcd.print(humidity);
   lcd.print("%");
 
   delay(2000);
