@@ -122,7 +122,8 @@ void loop() {
 
   upload_data(temperature, temp_c, humidity);
 
-  delay(10000);
+  // wait 1 minute
+  delay(60000);
   
 }
 
