@@ -45,6 +45,7 @@ void setup() {
   lcd.begin(16, 2);
   dht.begin();
   Serial.begin(9600);
+
 }
 
 
@@ -119,6 +120,16 @@ void loop() {
   lcd.print(humidity);
   lcd.print("%");
 
-  delay(2000);
+  upload_data(temperature, temp_c, humidity);
+
+  delay(10000);
   
+}
+
+void upload_data(float t_thermistor, float t_dht, float h_dht) {
+  Serial.print(t_thermistor);
+  Serial.print(",");
+  Serial.print(t_dht);
+  Serial.print(",");
+  Serial.println(h_dht);
 }
